@@ -2,6 +2,10 @@
 
 An AI-powered security log monitoring tool built with Streamlit, FastAPI, and LangGraph. It ingests server logs via a REST API, displays them in an interactive dashboard, and runs an autonomous LangGraph agent (backed by OpenRouter LLMs) to extract structured data and surface security insights.
 
+# SlideDeck
+
+https://app.chroniclehq.com/share/a9743016-68fb-4b6f-b979-491a21bde001/f320e1fa-6e0e-4488-affa-7b05d531cc6c/intro
+
 ## Architecture
 
 ```
