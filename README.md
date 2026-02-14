@@ -12,7 +12,7 @@ The agent makes runtime decisions about which analyzers to run, loops back for d
 
 ## Architecture
 
-![Architecture](architecture.jpg)
+![Architecture](agent_architecture.png)
 
 ### Agent Pipeline
 
@@ -48,29 +48,29 @@ log_ingest -> intent_router -> [conditional: route_analyzers]
 
 ### Node Reference
 
-| Node                         | Purpose                                                                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **log_ingest**               | Ingests raw event data into agent state, initializes retry counter                                                                           |
-| **intent_router**            | Parses user query (via LLM or keyword fallback) to set analysis mode and dynamic priority weights                                            |
-| **sequence_analyzer**        | Detects login velocity, sequential object access, request frequency, repeated actions                                                        |
-| **payload_inspector**        | Scans for SQL injection signatures, unexpected fields (isAdmin, role), command injection                                                     |
-| **behavior_profiler**        | Evaluates geographic deviation, role deviation, user agent anomalies (e.g. sqlmap)                                                           |
-| **run_all_analyzers**        | Runs all three analyzers in a single node (used in "full" analysis mode)                                                                     |
-| **risk_aggregator**          | Computes weighted risk score (base: 40% sequence + 40% payload + 20% behavior), fills defaults for skipped analyzers                         |
-| **benign_summary**           | Generates a lightweight summary for benign logs, skipping the classifier and LLM                                                             |
-| **mini_agent_classifier**    | Evaluates candidate attack hypotheses with supporting/contradicting evidence, selects the strongest match                                    |
-| **widen_and_retry**          | Resets mode to "full", re-runs all analyzers, and loops back to the risk aggregator for re-evaluation                                        |
-| **deep_sqli_analyzer**       | Checks for encoding evasion, second-order injection patterns, WAF bypass attempts, and catalogs injection points                             |
-| **deep_credential_analyzer** | Analyzes failed login counts, source IP distribution, password spray detection, and attack velocity                                          |
-| **deep_idor_analyzer**       | Detects sequential ID enumeration patterns across user endpoint access logs                                                                  |
-| **llm_threat_narrative**     | Synthesizes all scores and findings into a human-readable threat assessment (LLM-powered with structured fallback)                           |
+| Node                         | Purpose                                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **log_ingest**               | Ingests raw event data into agent state, initializes retry counter                                                   |
+| **intent_router**            | Parses user query (via LLM or keyword fallback) to set analysis mode and dynamic priority weights                    |
+| **sequence_analyzer**        | Detects login velocity, sequential object access, request frequency, repeated actions                                |
+| **payload_inspector**        | Scans for SQL injection signatures, unexpected fields (isAdmin, role), command injection                             |
+| **behavior_profiler**        | Evaluates geographic deviation, role deviation, user agent anomalies (e.g. sqlmap)                                   |
+| **run_all_analyzers**        | Runs all three analyzers in a single node (used in "full" analysis mode)                                             |
+| **risk_aggregator**          | Computes weighted risk score (base: 40% sequence + 40% payload + 20% behavior), fills defaults for skipped analyzers |
+| **benign_summary**           | Generates a lightweight summary for benign logs, skipping the classifier and LLM                                     |
+| **mini_agent_classifier**    | Evaluates candidate attack hypotheses with supporting/contradicting evidence, selects the strongest match            |
+| **widen_and_retry**          | Resets mode to "full", re-runs all analyzers, and loops back to the risk aggregator for re-evaluation                |
+| **deep_sqli_analyzer**       | Checks for encoding evasion, second-order injection patterns, WAF bypass attempts, and catalogs injection points     |
+| **deep_credential_analyzer** | Analyzes failed login counts, source IP distribution, password spray detection, and attack velocity                  |
+| **deep_idor_analyzer**       | Detects sequential ID enumeration patterns across user endpoint access logs                                          |
+| **llm_threat_narrative**     | Synthesizes all scores and findings into a human-readable threat assessment (LLM-powered with structured fallback)   |
 
 ### Routing Functions
 
-| Function                       | Decision                                                                                         |
-| ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| **route_analyzers**            | Routes to the appropriate analyzer based on `analysis_mode` (payload_focus, sequence_focus, etc.) |
-| **check_risk_level**           | Early-exits to `benign_summary` if risk < 0.25, otherwise proceeds to the classifier             |
+| Function                       | Decision                                                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **route_analyzers**            | Routes to the appropriate analyzer based on `analysis_mode` (payload_focus, sequence_focus, etc.)                      |
+| **check_risk_level**           | Early-exits to `benign_summary` if risk < 0.25, otherwise proceeds to the classifier                                   |
 | **route_after_classification** | Triggers retry on low-confidence focused scans, specialist deep-dive on high confidence, or goes directly to narrative |
 
 ## Project Structure
@@ -169,14 +169,14 @@ The project includes two test suites:
 pytest test_agent.py -v
 ```
 
-| Test area                           | What it covers                                                                                           |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Analysis helpers**                | `_analyze_sequences`, `_analyze_payloads`, `_analyze_behavior` — signal detection and edge cases         |
-| **Routing functions**               | `route_analyzers`, `check_risk_level`, `route_after_classification` — all conditional branches            |
-| **Node behavior**                   | Each node in isolation: log_ingest, intent_router, risk_aggregator, benign_summary, widen_and_retry       |
-| **Specialist deep-dive nodes**      | SQL injection, credential stuffing, and IDOR analyzers — detection accuracy and false positive resistance |
-| **End-to-end pipeline flows**       | Full graph execution: SQLi detection, credential stuffing, benign early termination, retry loop, IDOR     |
-| **Keyword fallback**               | Intent parsing without an LLM client                                                                     |
+| Test area                      | What it covers                                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Analysis helpers**           | `_analyze_sequences`, `_analyze_payloads`, `_analyze_behavior` — signal detection and edge cases          |
+| **Routing functions**          | `route_analyzers`, `check_risk_level`, `route_after_classification` — all conditional branches            |
+| **Node behavior**              | Each node in isolation: log_ingest, intent_router, risk_aggregator, benign_summary, widen_and_retry       |
+| **Specialist deep-dive nodes** | SQL injection, credential stuffing, and IDOR analyzers — detection accuracy and false positive resistance |
+| **End-to-end pipeline flows**  | Full graph execution: SQLi detection, credential stuffing, benign early termination, retry loop, IDOR     |
+| **Keyword fallback**           | Intent parsing without an LLM client                                                                      |
 
 ### Risk aggregator tests
 
