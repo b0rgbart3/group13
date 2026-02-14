@@ -109,7 +109,9 @@ def main():
         # user is entering it here in the UI
         result = run_agent(input_data, st.session_state.openrouter_client)
 
-        st.subheader("Agent Output")
+       
+        st.header('Security Vulnerabilities')
+        st.subheader("Risk Assessment:")
 
         # Overall risk score
         risk_score = result.get("risk_score", 0)
@@ -151,6 +153,6 @@ def main():
             chart_df = pd.DataFrame.from_dict(feature_data, orient="index")
             st.bar_chart(chart_df["Score"])
 
-    st.header('Security Vulnerabilities')
+   
 
 main()
