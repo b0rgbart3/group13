@@ -85,30 +85,66 @@ def main():
 
 
      # Main Interface
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.header("Server Logs")
-        st.subheader("Security Logs")
+    st.header("Server Logs")
+    st.subheader("Security Logs")
 
-        if logs:
-            df = pd.DataFrame(logs)
-            st.dataframe(df, use_container_width=True)
+    if logs:
+        df = pd.DataFrame(logs)
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("No logs available.")
+
+    if st.button("Run Agent"):
+        input_data = {
+            "message": "Analyze this log"
+        }
+
+        # passing the openrouter client is needed since the
+        # user is entering it here in the UI
+        result = run_agent(input_data, st.session_state.openrouter_client)
+
+        st.subheader("Agent Output")
+
+        # Overall risk score
+        risk_score = result.get("risk_score", 0)
+        alert_type = result.get("alert_type")
+        alert_confidence = result.get("alert_confidence", 0)
+
+        if risk_score >= 0.7:
+            risk_color = "🔴"
+        elif risk_score >= 0.4:
+            risk_color = "🟡"
         else:
-            st.info("No logs available.")
+            risk_color = "🟢"
 
-        if st.button("Run Agent"):
-            input_data = {
-                "message": "Analyze this log"
-            }
+        st.metric(
+            label=f"{risk_color} Overall Risk Score",
+            value=f"{risk_score:.0%}",
+        )
 
-            # passing the openrouter client is needed since the
-            # user is entering it here in the UI
-            result = run_agent(input_data, st.session_state.openrouter_client)
+        if alert_type:
+            st.warning(f"Alert: **{alert_type}** (confidence: {alert_confidence:.0%})")
 
-            st.subheader("Agent Output")
-            st.write(result)
-    with col2:
-        st.header('Security Vulnerabilities')
+        risk_factors = result.get("risk_factors", [])
+        if risk_factors:
+            st.error("Risk Factors: " + ", ".join(risk_factors))
+
+        # Build a single DataFrame with all feature scores
+        feature_data = {}
+        for key, label in [
+            ("sequence_features", "Sequence"),
+            ("payload_features", "Payload"),
+            ("behavior_features", "Behavior"),
+        ]:
+            features = result.get(key, {})
+            for name, score in features.items():
+                display_name = name.replace("_", " ").title()
+                feature_data[display_name] = {"Score": score, "Category": label}
+
+        if feature_data:
+            chart_df = pd.DataFrame.from_dict(feature_data, orient="index")
+            st.bar_chart(chart_df["Score"])
+
+    st.header('Security Vulnerabilities')
 
 main()
