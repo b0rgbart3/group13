@@ -64,10 +64,11 @@ def main():
          # LOGS
         st.subheader("Server Logs")
         st.write(f"**{len(logs)} Server Logs Entries**")
-        for log in logs:
-            with st.expander(f"{log['id']}", expanded=False):
-                st.write(f"**Category:** {log['timestamp']}")
-                st.write(f"**Category:** {log['level']}")
+        for i, log in enumerate(logs):
+            with st.expander(f"Log {i+1}: {log['method']} {log['endpoint']}", expanded=False):
+                st.write(f"**Timestamp:** {log['timestamp']}")
+                st.write(f"**Client IP:** {log['client_ip']}")
+                st.write(f"**Anomaly:** {log.get('anomaly', 'None')}")
         
         st.divider()
         
