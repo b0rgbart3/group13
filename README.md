@@ -19,7 +19,7 @@ The agent pipeline analyzes request sequences, inspects payloads, and profiles u
 ```
 ┌─────────────┐    GET /logs   ┌─────────────┐    run_agent()   ┌──────────────────┐
 │  FastAPI     │ ◄───────────► │  Streamlit   │ ──────────────► │  LangGraph Agent │
-│  Log Server  │               │  Dashboard   │                 │  (6-node pipeline)│
+│  Log Server  │               │  Dashboard   │                 │  (7-node pipeline)│
 └─────────────┘               └──────┬───────┘                 └──────────────────┘
       ▲                               │                                │
       │                               │  OpenRouter API                │
@@ -28,30 +28,32 @@ The agent pipeline analyzes request sequences, inspects payloads, and profiles u
 
 ### Agent Pipeline
 
-The LangGraph agent processes each log entry through six sequential nodes:
+The LangGraph agent processes each log entry through seven sequential nodes:
 
 ```
-log_ingest → sequence_analyzer → payload_inspector → behavior_profiler → risk_aggregator → alert_classifier
+log_ingest → intent_router → sequence_analyzer → payload_inspector → behavior_profiler → risk_aggregator → mini_agent_classifier
 ```
 
-| Node                  | Purpose                                                                                                 |
-| --------------------- | ------------------------------------------------------------------------------------------------------- |
-| **log_ingest**        | Ingests raw event data into agent state                                                                 |
-| **sequence_analyzer** | Detects login velocity, sequential object access, request frequency, repeated actions                   |
-| **payload_inspector** | Scans for SQL injection signatures, unexpected fields (isAdmin, role), command injection                |
-| **behavior_profiler** | Evaluates geographic deviation, role deviation, user agent anomalies (e.g. sqlmap)                      |
-| **risk_aggregator**   | Computes weighted risk score (40% sequence + 40% payload + 20% behavior)                                |
-| **alert_classifier**  | Classifies threat type: `SQL_INJECTION`, `CREDENTIAL_STUFFING`, `POSSIBLE_IDOR`, `BUSINESS_LOGIC_ABUSE` |
+| Node                       | Purpose                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **log_ingest**             | Ingests raw event data into agent state                                                                                              |
+| **intent_router**          | Parses user query to set analysis mode and dynamic priority weights (e.g. boosting payload weight for SQL-related queries)            |
+| **sequence_analyzer**      | Detects login velocity, sequential object access, request frequency, repeated actions                                                |
+| **payload_inspector**      | Scans for SQL injection signatures, unexpected fields (isAdmin, role), command injection                                             |
+| **behavior_profiler**      | Evaluates geographic deviation, role deviation, user agent anomalies (e.g. sqlmap)                                                   |
+| **risk_aggregator**        | Computes weighted risk score using dynamic weights from the intent router (base: 40% sequence + 40% payload + 20% behavior)          |
+| **mini_agent_classifier**  | Generates candidate attack hypotheses, evaluates supporting/contradicting evidence, and selects the strongest match. Detects `SQL_INJECTION`, `CREDENTIAL_STUFFING`, `POSSIBLE_IDOR`, `BUSINESS_LOGIC_ABUSE`, or `MULTI_VECTOR_ATTACK` when top hypotheses are close in score |
 
 ## Project Structure
 
 ```
-server.py           – FastAPI server exposing GET /logs (serves mock log data)
-agent.py            – LangGraph stateful agent with SecurityState and 6 analysis nodes
-main.py             – Streamlit dashboard: log viewer, agent runner, risk visualizations (bar, radar, heatmap, donut)
-mock_logs.json      – 16 realistic security log entries across 6 vulnerability categories
-requirements.txt    – Python dependencies
-.env                – OpenRouter API key (not committed)
+server.py                – FastAPI server exposing GET /logs (serves mock log data)
+agent.py                 – LangGraph stateful agent with SecurityState and 7 analysis nodes
+main.py                  – Streamlit dashboard: log viewer, agent runner, risk visualizations (bar, radar, heatmap, donut)
+test_risk_aggregator.py  – Pytest suite for the risk_aggregator node (weighted scoring, dynamic weights, edge cases)
+mock_logs.json           – 16 realistic security log entries across 6 vulnerability categories
+requirements.txt         – Python dependencies
+.env                     – OpenRouter API key (not committed)
 ```
 
 ## Threat Coverage
@@ -122,6 +124,22 @@ Opens at `http://localhost:8501`.
    - **Grouped bar chart** comparing features within each category
    - **Heatmap** of all feature scores across categories
    - **Donut chart** showing weighted risk contribution by category
+
+## Tests
+
+The project includes a pytest suite in `test_risk_aggregator.py` that validates the `risk_aggregator` node — the component responsible for combining feature scores from all three analyzers into a final weighted risk score.
+
+```bash
+pytest test_risk_aggregator.py -v
+```
+
+| Test class                     | What it covers                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| **TestDefaultWeights**         | Verifies risk score calculation and risk factor detection with uniform (1.0) priority weights          |
+| **TestPayloadBoostedWeights**  | Confirms that a payload priority multiplier of 1.5 (set by intent_router for SQL queries) increases the score relative to baseline |
+| **TestSequenceBoostedWeights** | Confirms that a sequence priority multiplier of 1.5 (set by intent_router for credential/login queries) increases the score relative to baseline |
+| **TestBehaviorBoostedWeights** | Confirms that a behavior priority multiplier of 1.5 increases the score relative to baseline          |
+| **TestEdgeCases**              | All-zero scores, all-max scores, and boundary testing around the 0.7 risk factor threshold            |
 
 ## Key Technologies
 
