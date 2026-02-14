@@ -83,6 +83,14 @@ def main():
 
 
      # Main Interface
+    st.markdown(
+        """
+        **Sentinel AI** goes beyond static rule sets and signature matching. Powered by advanced AI reasoning,
+        our autonomous agent dynamically adapts its analysis strategy in real time — choosing the right combination
+        of sequence, payload, and behavioral analyzers based on the threat landscape it discovers. The result?
+        Faster, sharper, and more context-aware threat assessments that catch what traditional tools miss.
+        """
+    )
     st.header("Server Logs")
     st.subheader("Mock Data Logs to Demo Different Vulnerabilities:")
 
