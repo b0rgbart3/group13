@@ -7,7 +7,8 @@ from langgraph.graph import StateGraph, END
 # -------------------------
 
 class SecurityState(TypedDict, total=False):
-    raw_event: Dict[str, Any]
+    selected_vuln: str
+    logs: List[Dict[str, Any]]
     client: Any
 
     sequence_features: Dict[str, float]
@@ -26,50 +27,59 @@ class SecurityState(TypedDict, total=False):
 # -------------------------
 
 def log_ingest_node(state: SecurityState) -> SecurityState:
-    # assume input_data contains "event"
-    state["raw_event"] = state.get("event", {})
+    state["logs"] = state.get("logs", [])
+    state["selected_vuln"] = state.get("selected_vuln", "")
     return state
 
 
 def sequence_analyzer_node(state: SecurityState) -> SecurityState:
-    event = state["raw_event"]
+    logs = state["logs"]
 
-    sequence_features = {
-        "login_velocity": 0.9 if event.get("endpoint") == "/api/login" and event.get("response_code") == 401 else 0.1,
-        "sequential_object_access": 0.85 if "/api/users/" in event.get("endpoint", "") else 0.1,
-        "request_frequency": 0.5,
-        "repeated_action_score": 0.8 if event.get("endpoint") == "/api/orders" else 0.1
+    login_velocity = max((0.9 if e.get("endpoint") == "/api/login" and e.get("response_code") == 401 else 0.1 for e in logs), default=0.1)
+    sequential_object_access = max((0.85 if "/api/users/" in e.get("endpoint", "") else 0.1 for e in logs), default=0.1)
+    request_frequency = min(len(logs) / 10.0, 1.0)
+    repeated_action_score = max((0.8 if e.get("endpoint") == "/api/orders" else 0.1 for e in logs), default=0.1)
+
+    state["sequence_features"] = {
+        "login_velocity": login_velocity,
+        "sequential_object_access": sequential_object_access,
+        "request_frequency": request_frequency,
+        "repeated_action_score": repeated_action_score
     }
-
-    state["sequence_features"] = sequence_features
     return state
 
 
 def payload_inspector_node(state: SecurityState) -> SecurityState:
-    event = state["raw_event"]
+    logs = state["logs"]
 
-    params = str(event.get("params", "")) + str(event.get("body", ""))
+    sql_injection_score = 0.1
+    unexpected_field_score = 0.1
+    for e in logs:
+        params = str(e.get("params", "")) + str(e.get("body", ""))
+        if "OR 1=1" in params or "UNION SELECT" in params:
+            sql_injection_score = 0.95
+        if "isAdmin" in params or "role" in params:
+            unexpected_field_score = 0.9
 
-    payload_features = {
-        "sql_injection_score": 0.95 if "OR 1=1" in params or "UNION SELECT" in params else 0.1,
-        "unexpected_field_score": 0.9 if "isAdmin" in params or "role" in params else 0.1,
+    state["payload_features"] = {
+        "sql_injection_score": sql_injection_score,
+        "unexpected_field_score": unexpected_field_score,
         "command_injection_score": 0.1
     }
-
-    state["payload_features"] = payload_features
     return state
 
 
 def behavior_profiler_node(state: SecurityState) -> SecurityState:
-    event = state["raw_event"]
+    logs = state["logs"]
 
-    behavior_features = {
+    role_deviation_score = max((0.75 if e.get("user_id") == 456 else 0.2 for e in logs), default=0.2)
+    user_agent_anomaly_score = max((0.8 if "sqlmap" in e.get("user_agent", "") else 0.2 for e in logs), default=0.2)
+
+    state["behavior_features"] = {
         "geo_deviation_score": 0.6,
-        "role_deviation_score": 0.75 if event.get("user_id") == 456 else 0.2,
-        "user_agent_anomaly_score": 0.8 if "sqlmap" in event.get("user_agent", "") else 0.2
+        "role_deviation_score": role_deviation_score,
+        "user_agent_anomaly_score": user_agent_anomaly_score
     }
-
-    state["behavior_features"] = behavior_features
     return state
 
 

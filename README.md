@@ -48,8 +48,8 @@ log_ingest → sequence_analyzer → payload_inspector → behavior_profiler →
 ```
 server.py           – FastAPI server exposing GET /logs (serves mock log data)
 agent.py            – LangGraph stateful agent with SecurityState and 6 analysis nodes
-main.py             – Streamlit dashboard: log viewer, agent runner, risk visualization
-mock_logs.json      – 13 realistic security log entries covering common attack patterns
+main.py             – Streamlit dashboard: log viewer, agent runner, risk visualizations (bar, radar, heatmap, donut)
+mock_logs.json      – 16 realistic security log entries across 6 vulnerability categories
 requirements.txt    – Python dependencies
 .env                – OpenRouter API key (not committed)
 ```
@@ -63,7 +63,7 @@ The mock dataset and agent detect the following attack patterns:
 - **SQL Injection** — `OR 1=1`, `UNION SELECT` payloads, sqlmap user agent
 - **Mass Assignment** — injecting `isAdmin` or `role` fields in request bodies
 - **Business Logic Abuse** — replaying promo codes or order actions
-- **Rate Scraping** — high-volume data extraction with large limits
+- **API Scraping** — high-volume data extraction with large limits and bot user agents
 
 ## Setup
 
@@ -71,10 +71,10 @@ The mock dataset and agent detect the following attack patterns:
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install streamlit openai pandas
+pip install streamlit openai pandas plotly
 ```
 
-> **Note:** `streamlit`, `openai`, and `pandas` are required by `main.py` but not yet listed in `requirements.txt`.
+> **Note:** `streamlit`, `openai`, `pandas`, and `plotly` are required by `main.py` but not yet listed in `requirements.txt`.
 
 Create a `.env` file with your API key (optional — you can also enter it in the UI):
 
@@ -111,9 +111,17 @@ Opens at `http://localhost:8501`.
 
 1. Open the Streamlit app in your browser.
 2. Enter your **OpenRouter API key** in the sidebar (or load from `.env`). Get one at [openrouter.ai/keys](https://openrouter.ai/keys).
-3. View the fetched security logs in the main panel.
+3. Select a **vulnerability type** from the dropdown to view its log entries.
 4. Click **Run Agent** to trigger the analysis pipeline.
-5. Review the risk score, alert classification, risk factors, and feature score chart.
+5. Review the results:
+   - **Risk score** with color-coded severity indicator
+   - **Alert classification** and confidence level
+   - **Risk factors** flagged by the agent
+   - **Feature score bar chart** for all individual features
+   - **Radar chart** showing max threat score per category (Sequence, Payload, Behavior)
+   - **Grouped bar chart** comparing features within each category
+   - **Heatmap** of all feature scores across categories
+   - **Donut chart** showing weighted risk contribution by category
 
 ## Key Technologies
 
@@ -122,4 +130,5 @@ Opens at `http://localhost:8501`.
 - **[LangGraph](https://langchain-ai.github.io/langgraph/)** — stateful agent workflow orchestration
 - **[OpenRouter](https://openrouter.ai/)** — LLM gateway (routes to GPT-4o-mini)
 - **[OpenAI SDK](https://github.com/openai/openai-python)** — client for OpenRouter API communication
-- **[Pandas](https://pandas.pydata.org/)** — log data display and chart rendering
+- **[Pandas](https://pandas.pydata.org/)** — log data display and chart data preparation
+- **[Plotly](https://plotly.com/python/)** — interactive charts (radar, grouped bar, heatmap, donut)

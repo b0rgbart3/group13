@@ -68,15 +68,6 @@ def main():
         
         st.divider()
 
-         # LOGS
-        st.subheader("Server Logs")
-        st.write(f"**{len(logs)} Server Logs Entries**")
-        for i, log in enumerate(logs):
-            with st.expander(f"Log {i+1}: {log['method']} {log['endpoint']}", expanded=False):
-                st.write(f"**Timestamp:** {log['timestamp']}")
-                st.write(f"**Client IP:** {log['client_ip']}")
-                st.write(f"**Anomaly:** {log.get('anomaly', 'None')}")
-        
         st.divider()
         
         # Statistics
@@ -93,17 +84,23 @@ def main():
 
      # Main Interface
     st.header("Server Logs")
-    st.subheader("Security Logs")
+    st.subheader("Mock Data Logs to Demo Different Vulnerabilities:")
 
     if logs:
-        df = pd.DataFrame(logs)
+        vulnerability_types = [entry["vulnerability_type"] for entry in logs]
+        selected_vuln = st.selectbox("Vulnerability Type", vulnerability_types)
+        selected_logs = next(entry["logs"] for entry in logs if entry["vulnerability_type"] == selected_vuln)
+        st.write(f"**{len(selected_logs)} Log Entries**")
+        df = pd.DataFrame(selected_logs)
         st.dataframe(df, use_container_width=True)
     else:
         st.info("No logs available.")
 
     if st.button("Run Agent"):
         input_data = {
-            "message": "Analyze this log"
+            "message": "Analyze this log",
+            "selected_vuln": selected_vuln,
+            "logs": selected_logs
         }
 
         # passing the openrouter client is needed since the
