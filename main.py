@@ -96,11 +96,35 @@ def main():
     else:
         st.info("No logs available.")
 
-    if st.button("Run Agent"):
+    st.header("What should we look for?")
+    query = st.text_input("User Query")
+
+    # Style the Run Agent button: 200% larger with pale green background
+    st.markdown("""
+        <style>
+        div.stButton > button[kind="primary"] {
+            font-size: 3em;
+            padding: 0.6em 2em;
+            background-color: #2e7d32;
+            color: #e8f5e9;
+            border: 3px solid #1b5e20;
+            border-radius: 1em;
+            font-weight: bold;
+        }
+        div.stButton > button[kind="primary"]:hover {
+            background-color: #1b5e20;
+            border-color: #0a3d0a;
+            color: #e8f5e9;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    if st.button("Run Agent", type="primary"):
         input_data = {
             "message": "Analyze this log",
             "selected_vuln": selected_vuln,
-            "logs": selected_logs
+            "logs": selected_logs,
+            "query": query
         }
 
         # passing the openrouter client is needed since the
