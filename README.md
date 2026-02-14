@@ -6,6 +6,10 @@ The agent pipeline analyzes request sequences, inspects payloads, and profiles u
 
 ![AI Security Log Monitor Dashboard](agent_screenshot.jpg)
 
+## Agent Graph
+
+![Agent Graph](graph_structure.jpg)
+
 ## Slide Deck
 
 [View Presentation](https://app.chroniclehq.com/share/a9743016-68fb-4b6f-b979-491a21bde001/f320e1fa-6e0e-4488-affa-7b05d531cc6c/intro)

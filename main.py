@@ -4,6 +4,7 @@ import openai
 import streamlit as st
 from dotenv import load_dotenv
 import pandas as pd
+import plotly.graph_objects as go
 from agent import run_agent
 
 response = requests.get("http://localhost:8000/logs")
@@ -153,6 +154,83 @@ def main():
             chart_df = pd.DataFrame.from_dict(feature_data, orient="index")
             st.bar_chart(chart_df["Score"])
 
-   
+            # --- Radar Chart: max score per category ---
+            st.subheader("Threat Profile (Radar)")
+            categories = ["Sequence", "Payload", "Behavior"]
+            cat_max_scores = [
+                chart_df[chart_df["Category"] == cat]["Score"].max()
+                for cat in categories
+            ]
+            radar_fig = go.Figure(data=go.Scatterpolar(
+                r=cat_max_scores + [cat_max_scores[0]],
+                theta=categories + [categories[0]],
+                fill="toself",
+                name="Risk Profile",
+            ))
+            radar_fig.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                margin=dict(l=40, r=40, t=40, b=40),
+            )
+            st.plotly_chart(radar_fig, use_container_width=True)
+
+            # --- Grouped Bar Chart by Category ---
+            st.subheader("Feature Scores by Category")
+            grouped_fig = go.Figure()
+            for cat in categories:
+                cat_data = chart_df[chart_df["Category"] == cat]
+                grouped_fig.add_trace(go.Bar(
+                    x=cat_data.index,
+                    y=cat_data["Score"],
+                    name=cat,
+                ))
+            grouped_fig.update_layout(
+                barmode="group",
+                yaxis=dict(title="Score", range=[0, 1]),
+                xaxis=dict(title="Feature"),
+                margin=dict(l=40, r=40, t=40, b=40),
+            )
+            st.plotly_chart(grouped_fig, use_container_width=True)
+
+            # --- Heatmap ---
+            st.subheader("Feature Heatmap")
+            all_features = chart_df.index.tolist()
+            heatmap_z = []
+            for cat in categories:
+                row = []
+                for feat in all_features:
+                    if chart_df.loc[feat, "Category"] == cat:
+                        row.append(chart_df.loc[feat, "Score"])
+                    else:
+                        row.append(None)
+                heatmap_z.append(row)
+            heatmap_fig = go.Figure(data=go.Heatmap(
+                z=heatmap_z,
+                x=all_features,
+                y=categories,
+                colorscale="RdYlGn_r",
+                zmin=0, zmax=1,
+                text=[[f"{v:.2f}" if v is not None else "" for v in row] for row in heatmap_z],
+                texttemplate="%{text}",
+                hovertemplate="Category: %{y}<br>Feature: %{x}<br>Score: %{z:.2f}<extra></extra>",
+            ))
+            heatmap_fig.update_layout(margin=dict(l=40, r=40, t=40, b=40))
+            st.plotly_chart(heatmap_fig, use_container_width=True)
+
+            # --- Pie / Donut Chart: weighted category contribution ---
+            st.subheader("Risk Contribution by Category")
+            weights = {"Sequence": 0.4, "Payload": 0.4, "Behavior": 0.2}
+            weighted_scores = [
+                cat_max_scores[i] * weights[cat] for i, cat in enumerate(categories)
+            ]
+            pie_fig = go.Figure(data=go.Pie(
+                labels=categories,
+                values=weighted_scores,
+                hole=0.4,
+                textinfo="label+percent",
+            ))
+            pie_fig.update_layout(margin=dict(l=40, r=40, t=40, b=40))
+            st.plotly_chart(pie_fig, use_container_width=True)
+
+
 
 main()
