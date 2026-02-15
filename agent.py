@@ -158,6 +158,7 @@ Guidelines for setting weights:
 def intent_router_node(state: SecurityState) -> SecurityState:
     query = (state.get("query") or "").lower()
     client = state.get("client")
+    logs = state.get('logs')
 
     state["analysis_mode"] = "full"
     state["priority_weights"] = {"sequence": 1.0, "payload": 1.0, "behavior": 1.0}
@@ -173,6 +174,7 @@ def intent_router_node(state: SecurityState) -> SecurityState:
                 messages=[
                     {"role": "system", "content": INTENT_ROUTER_SYSTEM_PROMPT},
                     {"role": "user", "content": query},
+                    {"role": "user", "content": logs}
                 ],
                 max_tokens=150,
                 temperature=0,
