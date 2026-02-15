@@ -10,6 +10,12 @@ The agent makes runtime decisions about which analyzers to run, loops back for d
 
 [View Presentation](https://app.chroniclehq.com/share/a9743016-68fb-4b6f-b979-491a21bde001/f320e1fa-6e0e-4488-affa-7b05d531cc6c/intro)
 
+## Threat and Agent Node Mappings
+
+This table demonstrates that instead of building nodes that just handle one type of vulnerability, we built a system that is more flexible and analyzes the logs based on the category (Sequence, Payload, Behavior).
+
+![Threat and Agent Node Mappings](mappings.jpg)
+
 ## Architecture
 
 ![Architecture](agent_architecture.png)
